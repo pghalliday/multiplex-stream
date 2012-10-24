@@ -1,46 +1,86 @@
 var expect = require('chai').expect,
-    StreamMultiplex = require('../../'),
-    Checklist = require('checklist');
+    Checklist = require('checklist'),
+    Sink = require('pipette').Sink,
+    Dropper = require('pipette').Dropper,
+    StreamMultiplex = require('../../');
     
 describe('StreamMultiplex', function() {
   it('should provide multiple readable/writable streams over a single carrier stream', function(done) {
     var checklist = new Checklist([
       'downstream connected',
-      'Hello, downstream',
-      'Hello, upstream',
-      'Goodbye, downstream',
+      'downstream connected',
+      'Hello, downstream. This is upstream1',
+      'Hello, downstream. This is upstream2',
+      'Hello, upstream1',
+      'Hello, upstream2',
       'end downstream',
-      'end upstream'
+      'end downstream',
+      'end upstream1',
+      'end upstream2'
     ], done);
-    var streamMultiplex1 = new StreamMultiplex();
-    var streamMultiplex2 = new StreamMultiplex(function(downstreamConnection) {
+    var upstreamMultiplex = new StreamMultiplex();
+    var downstreamMultiplex = new StreamMultiplex(function(downstreamConnection) {
       checklist.check('downstream connected');
       downstreamConnection.setEncoding();
       downstreamConnection.on('data', function(data) {
         checklist.check(data);
-        downstreamConnection.removeAllListeners('data');
-        downstreamConnection.on('data', function(data) {
-          checklist.check(data);
-        });
-        downstreamConnection.write('Hello, upstream');
+        if (data === 'Hello, downstream. This is upstream1') {
+          downstreamConnection.write('Hello, upstream1');
+        } else if (data === 'Hello, downstream. This is upstream2') {
+          downstreamConnection.write('Hello, upstream2');
+        }
       });
       downstreamConnection.on('end', function(data) {
         checklist.check('end downstream');
       });
     });
     
-    streamMultiplex1.pipe(streamMultiplex2);
-    streamMultiplex2.pipe(streamMultiplex1);
+    upstreamMultiplex.pipe(downstreamMultiplex);
+    downstreamMultiplex.pipe(upstreamMultiplex);
     
-    var upstreamConnection = streamMultiplex1.createStream();
-    upstreamConnection.setEncoding();
-    upstreamConnection.on('data', function(data) {
+    var upstreamConnection1 = upstreamMultiplex.createStream();
+    upstreamConnection1.setEncoding();
+    upstreamConnection1.on('data', function(data) {
       checklist.check(data);
-      upstreamConnection.end('Goodbye, downstream');        
+      upstreamConnection1.end();        
     });
-    upstreamConnection.on('end', function(data) {
-      checklist.check('end upstream');        
+    upstreamConnection1.on('end', function(data) {
+      checklist.check('end upstream1');        
     });
+
+    var upstreamConnection2 = upstreamMultiplex.createStream();
+    upstreamConnection2.setEncoding();
+    upstreamConnection2.on('data', function(data) {
+      checklist.check(data);
+      upstreamConnection2.end();        
+    });
+    upstreamConnection2.on('end', function(data) {
+      checklist.check('end upstream2');        
+    });
+
+    upstreamConnection1.write('Hello, downstream. This is upstream1');
+    upstreamConnection2.write('Hello, downstream. This is upstream2');
+  });
+
+  it('should behave correctly with intermediate flow control where data events may get merged', function(done) {
+    var checklist = new Checklist([
+      'Hello, downstream',
+      'How are you doing?'
+    ], done);
+    var upstreamMultiplex = new StreamMultiplex();
+    var downstreamMultiplex = new StreamMultiplex(function(downstreamConnection) {
+      downstreamConnection.setEncoding();
+      downstreamConnection.on('data', function(data) {
+        checklist.check(data);
+      });
+    });
+
+    var downstreamSink = new Sink(upstreamMultiplex);
+    downstreamSink.pipe(downstreamMultiplex);
+
+    var upstreamConnection = upstreamMultiplex.createStream();
     upstreamConnection.write('Hello, downstream');
+    upstreamConnection.write('How are you doing?');
+    upstreamMultiplex.end();
   });
 });
