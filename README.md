@@ -1,5 +1,5 @@
-stream-multiplex
-=========
+multiplex-stream
+================
 
 Multiplex multiple streams through a single stream
 
@@ -17,11 +17,11 @@ npm install stream-multiplex
 ## API
 
 ```javascript
-var StreamMultiplex = require('stream-multiplex');
+var MultiplexStream = require('multiplex-stream');
 
 // create 2 multiplex instances and listen for connections downstream
-var upstreamMultiplex = new StreamMultiplex();
-var downstreamMultiplex = new StreamMultiplex(function(downstreamConnection) {
+var upstreamMultiplex = new MultiplexStream();
+var downstreamMultiplex = new MultiplexStream(function(downstreamConnection) {
   // a multiplexed stream has connected from upstream
   downstreamConnection.setEncoding();
   downstreamConnection.on('data', function(data) {

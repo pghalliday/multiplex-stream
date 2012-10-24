@@ -2,9 +2,9 @@ var expect = require('chai').expect,
     Checklist = require('checklist'),
     Sink = require('pipette').Sink,
     Dropper = require('pipette').Dropper,
-    StreamMultiplex = require('../../');
+    MultiplexStream = require('../../');
     
-describe('StreamMultiplex', function() {
+describe('MultiplexStream', function() {
   it('should provide multiple readable/writable streams over a single carrier stream', function(done) {
     var checklist = new Checklist([
       'downstream connected',
@@ -18,8 +18,8 @@ describe('StreamMultiplex', function() {
       'end upstream1',
       'end upstream2'
     ], done);
-    var upstreamMultiplex = new StreamMultiplex();
-    var downstreamMultiplex = new StreamMultiplex(function(downstreamConnection) {
+    var upstreamMultiplex = new MultiplexStream();
+    var downstreamMultiplex = new MultiplexStream(function(downstreamConnection) {
       checklist.check('downstream connected');
       downstreamConnection.setEncoding();
       downstreamConnection.on('data', function(data) {
@@ -67,8 +67,8 @@ describe('StreamMultiplex', function() {
       'Hello, downstream',
       'How are you doing?'
     ], done);
-    var upstreamMultiplex = new StreamMultiplex();
-    var downstreamMultiplex = new StreamMultiplex(function(downstreamConnection) {
+    var upstreamMultiplex = new MultiplexStream();
+    var downstreamMultiplex = new MultiplexStream(function(downstreamConnection) {
       downstreamConnection.setEncoding();
       downstreamConnection.on('data', function(data) {
         checklist.check(data);

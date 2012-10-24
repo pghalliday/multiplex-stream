@@ -108,7 +108,7 @@ function Decoder() {
 }
 util.inherits(Decoder, EventEmitter);
 
-function Tunnel(id, streamStreamMultiplex) {
+function Tunnel(id, streamMultiplexStream) {
   var self = this;
   
   self.readable = true;
@@ -116,7 +116,7 @@ function Tunnel(id, streamStreamMultiplex) {
   
   self.write = function(data, encoding) {
     var buffer = Buffer.isBuffer(data) ? data : new Buffer(data, encoding);
-    streamStreamMultiplex.emit('data', encodeEvent({
+    streamMultiplexStream.emit('data', encodeEvent({
       tunnelId: id,
       type: DATA_EVENT,
       buffer: buffer
@@ -131,17 +131,17 @@ function Tunnel(id, streamStreamMultiplex) {
     if (data) {
       self.write(data, encoding);
     }
-    streamStreamMultiplex.emit('data', encodeEvent({
+    streamMultiplexStream.emit('data', encodeEvent({
       tunnelId: id,
       type: END_EVENT
     }));
-    streamStreamMultiplex.delete(id);
+    streamMultiplexStream.delete(id);
     self.emit('end');
   };
 }
 util.inherits(Tunnel, Stream);
 
-function StreamMultiplex(callback) {
+function MultiplexStream(callback) {
   var self = this,
       decoder = new Decoder(),
       tunnels = {};
@@ -203,6 +203,6 @@ function StreamMultiplex(callback) {
     self.emit('end');
   };
 }
-util.inherits(StreamMultiplex, Stream);
+util.inherits(MultiplexStream, Stream);
 
-module.exports = StreamMultiplex;
+module.exports = MultiplexStream;

@@ -1,8 +1,8 @@
 {
-  "name": "stream-multiplex",
+  "name": "multiplex-stream",
   "description": "Multiplex multiple streams through a single stream",
   "version": "0.0.1",
-  "homepage": "https://github.com/pghalliday/stream-multiplex.git",
+  "homepage": "https://github.com/pghalliday/multiplex-stream.git",
   "author": {
     "name": "Peter Halliday",
     "email": "pghalliday@gmail.com",
@@ -10,18 +10,18 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/pghalliday/stream-multiplex.git"
+    "url": "git://github.com/pghalliday/multiplex-stream.git"
   },
   "bugs": {
-    "url": "https://github.com/pghalliday/stream-multiplex/issues"
+    "url": "https://github.com/pghalliday/multiplex-stream/issues"
   },
   "licenses": [
     {
       "type": "MIT",
-      "url": "https://github.com/pghalliday/stream-multiplex/blob/master/LICENSE-MIT"
+      "url": "https://github.com/pghalliday/multiplex-stream/blob/master/LICENSE-MIT"
     }
   ],
-  "main": "src/StreamMultiplex.js",
+  "main": "src/MultiplexStream.js",
   "engines": {
     "node": ">= 0.8.12"
   },
