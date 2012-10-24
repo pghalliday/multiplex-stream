@@ -75,8 +75,33 @@ describe('MultiplexStream', function() {
       });
     });
 
+    // The Sink buffers all the data events and then emits a single data
+    // event with all the data glued together
     var downstreamSink = new Sink(upstreamMultiplex);
     downstreamSink.pipe(downstreamMultiplex);
+
+    var upstreamConnection = upstreamMultiplex.createStream();
+    upstreamConnection.write('Hello, downstream');
+    upstreamConnection.write('How are you doing?');
+    upstreamMultiplex.end();
+  });
+
+  it('should behave correctly with intermediate flow control where data events may get split', function(done) {
+    var checklist = new Checklist([
+      'Hello, downstream',
+      'How are you doing?'
+    ], done);
+    var upstreamMultiplex = new MultiplexStream();
+    var downstreamMultiplex = new MultiplexStream(function(downstreamConnection) {
+      downstreamConnection.setEncoding();
+      downstreamConnection.on('data', function(data) {
+        checklist.check(data);
+      });
+    });
+
+    // The Dropper splits each data event into lots of single byte data events
+    var downstreamDropper = new Dropper(upstreamMultiplex);
+    downstreamDropper.pipe(downstreamMultiplex);
 
     var upstreamConnection = upstreamMultiplex.createStream();
     upstreamConnection.write('Hello, downstream');

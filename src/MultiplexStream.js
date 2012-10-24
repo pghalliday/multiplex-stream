@@ -77,6 +77,7 @@ function Decoder() {
         dataLengthBytes++;
         if (dataLengthBytes === 4) {
           event.buffer = new Buffer(dataLength);
+          dataOffset = 0;
           state = READING_DATA;
         }
         offset++;

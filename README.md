@@ -7,6 +7,7 @@ Multiplex multiple streams through a single stream
 
 - should provide multiple readable/writable streams over a single carrier stream
 - should behave correctly with intermediate flow control where data events may get merged
+- should behave correctly with intermediate flow control where data events may get split
 
 ## Installation
 
@@ -54,8 +55,7 @@ upstreamConnection.write('Hello, downstream');
 
 ## Roadmap
 
-* should behave correctly with intermediate flow control where data events may get split
-- should handle very large data events
+- Currently no backlog items
 
 ## Contributing
 In lieu of a formal styleguide, take care to maintain the existing coding style. Add unit tests for any new or changed functionality. Lint and test your code using ``./grunt.sh`` or ``.\grunt.bat``.
