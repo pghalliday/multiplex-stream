@@ -1,7 +1,7 @@
 {
   "name": "multiplex-stream",
   "description": "Multiplex multiple streams through a single stream",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "homepage": "https://github.com/pghalliday/multiplex-stream.git",
   "author": {
     "name": "Peter Halliday",
