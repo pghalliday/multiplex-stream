@@ -108,4 +108,32 @@ describe('MultiplexStream', function() {
     upstreamConnection.write('How are you doing?');
     upstreamMultiplex.end();
   });
+
+  it('should set up a connection before data is sent', function(done) {
+    var checklist = new Checklist([
+      'check'
+    ], done);
+    var upstreamMultiplex = new MultiplexStream();
+    var downstreamMultiplex = new MultiplexStream(function(downstreamConnection) {
+      checklist.check('check');
+    });
+    upstreamMultiplex.pipe(downstreamMultiplex);
+
+    var upstreamConnection = upstreamMultiplex.createStream('anAwesomeID');
+    upstreamMultiplex.end();
+  });
+  it('should allow a stream to be named', function(done) {
+    var checklist = new Checklist([
+      'anAwesomeID'
+    ], done);
+    var upstreamMultiplex = new MultiplexStream();
+    var downstreamMultiplex = new MultiplexStream(function(downstreamConnection) {
+      checklist.check(downstreamConnection.id);
+    });
+    upstreamMultiplex.pipe(downstreamMultiplex);
+
+    var upstreamConnection = upstreamMultiplex.createStream('anAwesomeID');
+    upstreamConnection.write("garbage");
+    upstreamMultiplex.end();
+  });
 });
