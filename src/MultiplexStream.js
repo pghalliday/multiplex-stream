@@ -115,6 +115,8 @@ function Tunnel(id, streamMultiplexStream) {
   
   self.readable = true;
   self.writable = true;
+
+  self.id = id;
   
   self.write = function(data, encoding) {
     var buffer = Buffer.isBuffer(data) ? data : new Buffer(data, encoding);
@@ -188,7 +190,7 @@ function MultiplexStream(callback) {
     }
   });
 
-  self.createStream = function(callback, id){
+  self.createStream = function(id){
     id = id || uuid.v1();
     var tunnel = new Tunnel(id, self);
     registerTunnel(id, tunnel);
