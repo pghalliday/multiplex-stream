@@ -1,5 +1,4 @@
-var expect = require('chai').expect,
-    Checklist = require('checklist'),
+var Checklist = require('checklist'),
     Sink = require('pipette').Sink,
     Dropper = require('pipette').Dropper,
     MultiplexStream = require('../../');
@@ -110,18 +109,16 @@ describe('MultiplexStream', function() {
   });
 
   it('should set up a connection before data is sent', function(done) {
-    var checklist = new Checklist([
-      'check'
-    ], done);
     var upstreamMultiplex = new MultiplexStream();
     var downstreamMultiplex = new MultiplexStream(function(downstreamConnection) {
-      checklist.check('check');
+      done();
     });
     upstreamMultiplex.pipe(downstreamMultiplex);
 
-    var upstreamConnection = upstreamMultiplex.createStream('anAwesomeID');
+    var upstreamConnection = upstreamMultiplex.createStream();
     upstreamMultiplex.end();
   });
+
   it('should allow a stream to be named', function(done) {
     var checklist = new Checklist([
       'anAwesomeID'
@@ -133,7 +130,6 @@ describe('MultiplexStream', function() {
     upstreamMultiplex.pipe(downstreamMultiplex);
 
     var upstreamConnection = upstreamMultiplex.createStream('anAwesomeID');
-    upstreamConnection.write("garbage");
     upstreamMultiplex.end();
   });
 });
