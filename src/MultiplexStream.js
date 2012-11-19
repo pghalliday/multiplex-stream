@@ -5,7 +5,7 @@ var util = require('util'),
 
 var END_EVENT = 0,
     DATA_EVENT = 1,
-    TUNNEL_EVENT = 2;
+    CONNECTION_EVENT = 2;
 
 function encodeEvent(event) {
   var tunnelIdBuffer = new Buffer(event.tunnelId, 'utf8');
@@ -172,21 +172,14 @@ function MultiplexStream(callback) {
         tunnel.emit('end');
       }
     } else if (event.type === DATA_EVENT) {
-      if (!tunnel) {
-        tunnel = new Tunnel(event.tunnelId, self);
-        registerTunnel(event.tunnelId, tunnel);
-        self.emit('connection', tunnel);
-      }
       if (tunnel.encoding) {
         event.buffer = event.buffer.toString(tunnel.encoding);
       }
       tunnel.emit('data', event.buffer);
-    } else if (event.type === TUNNEL_EVENT) {
-      if (!tunnel) {
-        tunnel = new Tunnel(event.tunnelId, self);
-        registerTunnel(event.tunnelId, tunnel);
-        self.emit('connection', tunnel);
-      }
+    } else if (event.type === CONNECTION_EVENT) {
+      tunnel = new Tunnel(event.tunnelId, self);
+      registerTunnel(event.tunnelId, tunnel);
+      self.emit('connection', tunnel);
     }
   });
 
@@ -196,7 +189,7 @@ function MultiplexStream(callback) {
     registerTunnel(id, tunnel);
     self.emit('data', encodeEvent({
       tunnelId: id,
-      type: TUNNEL_EVENT
+      type: CONNECTION_EVENT
     }));
     return tunnel;
   };
