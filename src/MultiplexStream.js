@@ -4,7 +4,8 @@ var util = require('util'),
     Stream = require('stream');
 
 var END_EVENT = 0,
-    DATA_EVENT = 1;
+    DATA_EVENT = 1,
+    CONNECTION_EVENT = 2;
 
 function encodeEvent(event) {
   var tunnelIdBuffer = new Buffer(event.tunnelId, 'utf8');
@@ -114,6 +115,8 @@ function Tunnel(id, streamMultiplexStream) {
   
   self.readable = true;
   self.writable = true;
+
+  self.id = id;
   
   self.write = function(data, encoding) {
     var buffer = Buffer.isBuffer(data) ? data : new Buffer(data, encoding);
@@ -169,22 +172,25 @@ function MultiplexStream(callback) {
         tunnel.emit('end');
       }
     } else if (event.type === DATA_EVENT) {
-      if (!tunnel) {
-        tunnel = new Tunnel(event.tunnelId, self);
-        registerTunnel(event.tunnelId, tunnel);
-        self.emit('connection', tunnel);
-      }
       if (tunnel.encoding) {
         event.buffer = event.buffer.toString(tunnel.encoding);
       }
       tunnel.emit('data', event.buffer);
+    } else if (event.type === CONNECTION_EVENT) {
+      tunnel = new Tunnel(event.tunnelId, self);
+      registerTunnel(event.tunnelId, tunnel);
+      self.emit('connection', tunnel);
     }
   });
 
-  self.createStream = function(callback){
-    var id = uuid.v1();
+  self.createStream = function(id){
+    id = id || uuid.v1();
     var tunnel = new Tunnel(id, self);
     registerTunnel(id, tunnel);
+    self.emit('data', encodeEvent({
+      tunnelId: id,
+      type: CONNECTION_EVENT
+    }));
     return tunnel;
   };
 
