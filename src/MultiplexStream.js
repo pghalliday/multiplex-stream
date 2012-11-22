@@ -17,7 +17,6 @@ function emitEvent(emitter, event, data) {
       events = [];
       currentEvents.forEach(function(event) {
         if (event.event === 'data') {
-          console.log('emit data: ' + event.data);
         }
         event.emitter.emit(event.event, event.data);
       });
@@ -85,14 +84,12 @@ function Decoder() {
       case READING_EVENT_TYPE:
         event.type = buffer.readUInt8(offset);
         if (event.type === DATA_EVENT) {
-          console.log('decoding DATA_EVENT');
           dataLength = 0;
           dataLengthBytes = 0;
           state = READING_DATA_LENGTH;
         } else {
           idLength = 0;
           state = READING_ID_LENGTH;
-          console.log('emit EVENT: ' + event.type);
           emitEvent(self, 'event', event);
           // start a new event as the last one will be used asynchronously
           event = {};
@@ -104,7 +101,6 @@ function Decoder() {
         dataLength += buffer.readUInt8(offset);
         dataLengthBytes++;
         if (dataLengthBytes === 4) {
-          console.log('decoding DATA_EVENT dataLength: ' + dataLength);
           event.buffer = new Buffer(dataLength);
           dataOffset = 0;
           state = READING_DATA;
@@ -121,7 +117,6 @@ function Decoder() {
           buffer.copy(event.buffer, dataOffset, offset, offset + dataLength);
           idLength = 0;
           state = READING_ID_LENGTH;
-          console.log('emit DATA_EVENT event.buffer: ' + event.buffer);
           emitEvent(self, 'event', event);
           // start a new event as the last one will be used asynchronously
           event = {};
@@ -150,7 +145,6 @@ function Tunnel(id, streamMultiplexStream) {
   self.id = id;
   
   self.write = function(data, encoding) {
-    console.log(data);
     var buffer = Buffer.isBuffer(data) ? data : new Buffer(data, encoding);
     emitEvent(streamMultiplexStream, 'data', encodeEvent({
       tunnelId: id,
@@ -164,7 +158,6 @@ function Tunnel(id, streamMultiplexStream) {
   };
   
   self.end = function(data, encoding) {
-    console.log(data);
     if (data) {
       self.write(data, encoding);
     }
@@ -200,13 +193,11 @@ function MultiplexStream(callback) {
   decoder.on('event', function(event) {
     var tunnel = tunnels[event.tunnelId];
     if (event.type === END_EVENT) {
-      console.log('END_EVENT');
       if (tunnel) {
         delete tunnels[event.tunnelId];
         emitEvent(tunnel, 'end');
       }
     } else if (event.type === DATA_EVENT) {
-      console.log('DATA_EVENT: ' + event.buffer);
       if (tunnel) {
         if (tunnel.encoding) {
           event.buffer = event.buffer.toString(tunnel.encoding);
@@ -214,7 +205,6 @@ function MultiplexStream(callback) {
         emitEvent(tunnel, 'data', event.buffer);
       }
     } else if (event.type === CONNECTION_EVENT) {
-      console.log('CONNECTION_EVENT');
       tunnel = new Tunnel(event.tunnelId, self);
       registerTunnel(event.tunnelId, tunnel);
 
@@ -225,7 +215,6 @@ function MultiplexStream(callback) {
 
       emitEvent(self, 'connection', tunnel);
     } else if (event.type === CONNECT_EVENT) {
-      console.log('CONNECT_EVENT');
       if (tunnel) {
         emitEvent(tunnel, 'connect');
       }

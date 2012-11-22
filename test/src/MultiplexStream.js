@@ -3,7 +3,7 @@ var Checklist = require('checklist'),
     MultiplexStream = require('../../');
     
 describe('MultiplexStream', function() {
-  it.skip('should provide multiple readable/writable streams over a single carrier stream', function(done) {
+  it('should provide multiple readable/writable streams over a single carrier stream', function(done) {
     var checklist = new Checklist([
       'downstream1 connected',
       'downstream2 connected',
@@ -15,7 +15,7 @@ describe('MultiplexStream', function() {
       'end downstream2',
       'end upstream1',
       'end upstream2'
-    ], {debug: true}, done);
+    ], done);
     var upstreamConnection1;
     var upstreamConnection2;
     var upstreamMultiplex = new MultiplexStream();
@@ -76,7 +76,7 @@ describe('MultiplexStream', function() {
     var checklist = new Checklist([
       'Hello, downstream',
       'How are you doing?'
-    ], {debug: true}, done);
+    ], done);
 
     var tunnel = new TunnelStream({
       messageSize: 5
@@ -87,9 +87,9 @@ describe('MultiplexStream', function() {
 
     var downstreamMultiplex = new MultiplexStream(function(downstreamConnection) {
       // asynchronously flush the downstream tunnel to make sure the connect event gets there
-      setTimeout(function() {
+      process.nextTick(function() {
         tunnel.downstream.flush();
-      }, 500);
+      });
 
       downstreamConnection.setEncoding();
       downstreamConnection.on('data', function(data) {
@@ -101,15 +101,18 @@ describe('MultiplexStream', function() {
     var upstreamConnection = upstreamMultiplex.connect(function() {
       upstreamConnection.write('Hello, downstream');
       upstreamConnection.write('How are you doing?');
-      upstreamMultiplex.end();
+      // asynchronously flush the upstream tunnel to make sure the last data event gets there
+      process.nextTick(function() {
+        tunnel.upstream.flush();
+      });
     });
     // asynchronously flush the upstream tunnel to make sure the connection event gets there
-    setTimeout(function() {
+    process.nextTick(function() {
       tunnel.upstream.flush();
-    }, 500);
+    });
   });
 
-  it.skip('should allow the downstream connection to write data first', function(done) {
+  it('should allow the downstream connection to write data first', function(done) {
     var checklist = new Checklist([
       'Go away!',
       'downstreamConnection end',
@@ -136,7 +139,7 @@ describe('MultiplexStream', function() {
     });
   });
 
-  it.skip('should allow a stream to be named', function(done) {
+  it('should allow a stream to be named', function(done) {
     var checklist = new Checklist([
       'anAwesomeID'
     ], done);
