@@ -1,5 +1,6 @@
 var Checklist = require('checklist'),
     TunnelStream = require('tunnel-stream'),
+    expect = require('expect.js'),
     MultiplexStream = require('../../');
     
 describe('MultiplexStream', function() {
@@ -154,8 +155,42 @@ describe('MultiplexStream', function() {
     });
   });
 
-  it.skip('should error if an existing id is used to make a connection', function(done) {
-    done();
+  it('should error if the upstream multiplex already has a connection with the requested id', function(done) {
+    var upstreamMultiplex = new MultiplexStream();
+    var downstreamMultiplex = new MultiplexStream(function(downstreamConnection) {
+      expect(downstreamConnection.id).to.equal('anAwesomeID');
+      upstreamMultiplex.connect('anAwesomeID', function() {
+        expect().fail('Should not have received connect event');
+      }).on('error', function(error) {
+        expect(error.message).to.equal('Connection already exists at this end: anAwesomeID');
+        done();
+      });
+    });
+    upstreamMultiplex.pipe(downstreamMultiplex).pipe(upstreamMultiplex);
+
+    var upstreamConnection = upstreamMultiplex.connect('anAwesomeID', function() {
+      upstreamMultiplex.end();
+    });
+  });
+
+  it('should error if the downstream multiplex already has a connection with the requested id', function(done) {
+    var upstreamMultiplex = new MultiplexStream();
+    var downstreamMultiplex = new MultiplexStream(function(downstreamConnection) {
+      expect(downstreamConnection.id).to.equal('anAwesomeID');
+      var anotherUpstreamMultiplex = new MultiplexStream();
+      anotherUpstreamMultiplex.pipe(downstreamMultiplex).pipe(anotherUpstreamMultiplex);
+      anotherUpstreamMultiplex.connect('anAwesomeID', function() {
+        expect().fail('Should not have received connect event');
+      }).on('error', function(error) {
+        expect(error.message).to.equal('Connection already exists at the other end: anAwesomeID');
+        done();
+      });
+    });
+    upstreamMultiplex.pipe(downstreamMultiplex).pipe(upstreamMultiplex);
+
+    var upstreamConnection = upstreamMultiplex.connect('anAwesomeID', function() {
+      upstreamMultiplex.end();
+    });
   });
 
   it.skip('should timeout if no multiplex responds to the connect request', function(done) {

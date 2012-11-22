@@ -6,7 +6,8 @@ var util = require('util'),
 var END_EVENT = 0,
     DATA_EVENT = 1,
     CONNECTION_EVENT = 2,
-    CONNECT_EVENT = 3;
+    CONNECT_EVENT = 3,
+    ERROR_EVENT = 4;
 
 // force all events to be asynchronous
 function emitEvent(emitter, event, data) {    
@@ -191,18 +192,30 @@ function MultiplexStream(callback) {
         emitEvent(tunnel, 'data', event.buffer);
       }
     } else if (event.type === CONNECTION_EVENT) {
-      tunnel = new Tunnel(event.tunnelId, self);
-      registerTunnel(event.tunnelId, tunnel);
+      if (tunnels[event.tunnelId]) {
+        emitEvent(self, 'data', encodeEvent({
+          tunnelId: tunnel.id,
+          type: ERROR_EVENT
+        }));
+      } else {
+        tunnel = new Tunnel(event.tunnelId, self);
+        registerTunnel(event.tunnelId, tunnel);
 
-      emitEvent(self, 'data', encodeEvent({
-        tunnelId: tunnel.id,
-        type: CONNECT_EVENT
-      }));
+        emitEvent(self, 'data', encodeEvent({
+          tunnelId: tunnel.id,
+          type: CONNECT_EVENT
+        }));
 
-      emitEvent(self, 'connection', tunnel);
+        emitEvent(self, 'connection', tunnel);
+      }
     } else if (event.type === CONNECT_EVENT) {
       if (tunnel) {
         emitEvent(tunnel, 'connect');
+      }
+    } else if (event.type === ERROR_EVENT) {
+      if (tunnel) {
+        delete tunnels[tunnel.id];
+        emitEvent(tunnel, 'error', new Error('Connection already exists at the other end: ' + tunnel.id));
       }
     }
   });
@@ -213,14 +226,19 @@ function MultiplexStream(callback) {
       id = null;      
     }
     id = id || uuid.v1();
+
     var tunnel = new Tunnel(id, self);
     tunnel.on('connect', connectListener);
-    registerTunnel(id, tunnel);
 
-    emitEvent(self, 'data', encodeEvent({
-      tunnelId: id,
-      type: CONNECTION_EVENT
-    }));      
+    if (tunnels[id]) {
+      emitEvent(tunnel, 'error', new Error('Connection already exists at this end: ' + id));      
+    } else {
+      registerTunnel(id, tunnel);
+      emitEvent(self, 'data', encodeEvent({
+        tunnelId: id,
+        type: CONNECTION_EVENT
+      }));      
+    }
 
     return tunnel;
   };
