@@ -1,125 +1,142 @@
 var Checklist = require('checklist'),
-    Sink = require('pipette').Sink,
-    Dropper = require('pipette').Dropper,
+    TunnelStream = require('tunnel-stream'),
     MultiplexStream = require('../../');
     
 describe('MultiplexStream', function() {
-  it('should provide multiple readable/writable streams over a single carrier stream', function(done) {
+  it.skip('should provide multiple readable/writable streams over a single carrier stream', function(done) {
     var checklist = new Checklist([
-      'downstream connected',
-      'downstream connected',
+      'downstream1 connected',
+      'downstream2 connected',
       'Hello, downstream. This is upstream1',
       'Hello, downstream. This is upstream2',
       'Hello, upstream1',
       'Hello, upstream2',
-      'end downstream',
-      'end downstream',
+      'end downstream1',
+      'end downstream2',
       'end upstream1',
       'end upstream2'
-    ], done);
+    ], {debug: true}, done);
+    var upstreamConnection1;
+    var upstreamConnection2;
     var upstreamMultiplex = new MultiplexStream();
     var downstreamMultiplex = new MultiplexStream(function(downstreamConnection) {
-      checklist.check('downstream connected');
       downstreamConnection.setEncoding();
-      downstreamConnection.on('data', function(data) {
+      switch (downstreamConnection.id) {
+        case upstreamConnection1.id:
+          checklist.check('downstream1 connected');
+          downstreamConnection.on('data', function(data) {
+            checklist.check(data);
+            downstreamConnection.write('Hello, upstream1');
+          });
+          downstreamConnection.on('end', function(data) {
+            checklist.check('end downstream1');
+          });
+          break;
+        case upstreamConnection2.id:
+          checklist.check('downstream2 connected');
+          downstreamConnection.on('data', function(data) {
+            checklist.check(data);
+            downstreamConnection.write('Hello, upstream2');
+          });
+          downstreamConnection.on('end', function(data) {
+            checklist.check('end downstream2');
+          });
+          break;
+      }
+    });
+    
+    upstreamMultiplex.pipe(downstreamMultiplex).pipe(upstreamMultiplex);
+    
+    upstreamConnection1 = upstreamMultiplex.connect(function() {
+      upstreamConnection1.setEncoding();
+      upstreamConnection1.on('data', function(data) {
         checklist.check(data);
-        if (data === 'Hello, downstream. This is upstream1') {
-          downstreamConnection.write('Hello, upstream1');
-        } else if (data === 'Hello, downstream. This is upstream2') {
-          downstreamConnection.write('Hello, upstream2');
-        }
+        upstreamConnection1.end();        
       });
-      downstreamConnection.on('end', function(data) {
-        checklist.check('end downstream');
+      upstreamConnection1.on('end', function(data) {
+        checklist.check('end upstream1');        
       });
-    });
-    
-    upstreamMultiplex.pipe(downstreamMultiplex);
-    downstreamMultiplex.pipe(upstreamMultiplex);
-    
-    var upstreamConnection1 = upstreamMultiplex.createStream();
-    upstreamConnection1.setEncoding();
-    upstreamConnection1.on('data', function(data) {
-      checklist.check(data);
-      upstreamConnection1.end();        
-    });
-    upstreamConnection1.on('end', function(data) {
-      checklist.check('end upstream1');        
+      upstreamConnection1.write('Hello, downstream. This is upstream1');
     });
 
-    var upstreamConnection2 = upstreamMultiplex.createStream();
-    upstreamConnection2.setEncoding();
-    upstreamConnection2.on('data', function(data) {
-      checklist.check(data);
-      upstreamConnection2.end();        
+    upstreamConnection2 = upstreamMultiplex.connect(function() {
+      upstreamConnection2.setEncoding();
+      upstreamConnection2.on('data', function(data) {
+        checklist.check(data);
+        upstreamConnection2.end();        
+      });
+      upstreamConnection2.on('end', function(data) {
+        checklist.check('end upstream2');        
+      });
+      upstreamConnection2.write('Hello, downstream. This is upstream2');
     });
-    upstreamConnection2.on('end', function(data) {
-      checklist.check('end upstream2');        
-    });
-
-    upstreamConnection1.write('Hello, downstream. This is upstream1');
-    upstreamConnection2.write('Hello, downstream. This is upstream2');
   });
 
-  it('should behave correctly with intermediate flow control where data events may get merged', function(done) {
+  it('should behave correctly with intermediate flow control where data events may get split and/or concatenated', function(done) {
     var checklist = new Checklist([
       'Hello, downstream',
       'How are you doing?'
-    ], done);
+    ], {debug: true}, done);
+
+    var tunnel = new TunnelStream({
+      messageSize: 5
+    });
+
     var upstreamMultiplex = new MultiplexStream();
+    upstreamMultiplex.pipe(tunnel.upstream).pipe(upstreamMultiplex);
+
     var downstreamMultiplex = new MultiplexStream(function(downstreamConnection) {
+      // asynchronously flush the downstream tunnel to make sure the connect event gets there
+      setTimeout(function() {
+        tunnel.downstream.flush();
+      }, 500);
+
       downstreamConnection.setEncoding();
       downstreamConnection.on('data', function(data) {
         checklist.check(data);
       });
     });
+    downstreamMultiplex.pipe(tunnel.downstream).pipe(downstreamMultiplex);
 
-    // The Sink buffers all the data events and then emits a single data
-    // event with all the data glued together
-    var downstreamSink = new Sink(upstreamMultiplex);
-    downstreamSink.pipe(downstreamMultiplex);
-
-    var upstreamConnection = upstreamMultiplex.createStream();
-    upstreamConnection.write('Hello, downstream');
-    upstreamConnection.write('How are you doing?');
-    upstreamMultiplex.end();
+    var upstreamConnection = upstreamMultiplex.connect(function() {
+      upstreamConnection.write('Hello, downstream');
+      upstreamConnection.write('How are you doing?');
+      upstreamMultiplex.end();
+    });
+    // asynchronously flush the upstream tunnel to make sure the connection event gets there
+    setTimeout(function() {
+      tunnel.upstream.flush();
+    }, 500);
   });
 
-  it('should behave correctly with intermediate flow control where data events may get split', function(done) {
+  it.skip('should allow the downstream connection to write data first', function(done) {
     var checklist = new Checklist([
-      'Hello, downstream',
-      'How are you doing?'
+      'Go away!',
+      'downstreamConnection end',
+      'upstreamConnection end'
     ], done);
+
     var upstreamMultiplex = new MultiplexStream();
     var downstreamMultiplex = new MultiplexStream(function(downstreamConnection) {
-      downstreamConnection.setEncoding();
-      downstreamConnection.on('data', function(data) {
+      downstreamConnection.on('end', function() {
+        checklist.check('downstreamConnection end');
+      });
+      downstreamConnection.end('Go away!');
+    });
+    upstreamMultiplex.pipe(downstreamMultiplex).pipe(upstreamMultiplex);
+
+    var upstreamConnection = upstreamMultiplex.connect(function() {
+      upstreamConnection.setEncoding();
+      upstreamConnection.on('data', function(data) {
         checklist.check(data);
       });
+      upstreamConnection.on('end', function() {
+        checklist.check('upstreamConnection end');
+      });
     });
-
-    // The Dropper splits each data event into lots of single byte data events
-    var downstreamDropper = new Dropper(upstreamMultiplex);
-    downstreamDropper.pipe(downstreamMultiplex);
-
-    var upstreamConnection = upstreamMultiplex.createStream();
-    upstreamConnection.write('Hello, downstream');
-    upstreamConnection.write('How are you doing?');
-    upstreamMultiplex.end();
   });
 
-  it('should set up a connection before data is sent', function(done) {
-    var upstreamMultiplex = new MultiplexStream();
-    var downstreamMultiplex = new MultiplexStream(function(downstreamConnection) {
-      done();
-    });
-    upstreamMultiplex.pipe(downstreamMultiplex);
-
-    var upstreamConnection = upstreamMultiplex.createStream();
-    upstreamMultiplex.end();
-  });
-
-  it('should allow a stream to be named', function(done) {
+  it.skip('should allow a stream to be named', function(done) {
     var checklist = new Checklist([
       'anAwesomeID'
     ], done);
@@ -127,9 +144,10 @@ describe('MultiplexStream', function() {
     var downstreamMultiplex = new MultiplexStream(function(downstreamConnection) {
       checklist.check(downstreamConnection.id);
     });
-    upstreamMultiplex.pipe(downstreamMultiplex);
+    upstreamMultiplex.pipe(downstreamMultiplex).pipe(upstreamMultiplex);
 
-    var upstreamConnection = upstreamMultiplex.createStream('anAwesomeID');
-    upstreamMultiplex.end();
+    var upstreamConnection = upstreamMultiplex.connect('anAwesomeID', function() {
+      upstreamMultiplex.end();
+    });
   });
 });
