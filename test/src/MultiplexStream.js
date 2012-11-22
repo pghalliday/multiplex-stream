@@ -153,4 +153,16 @@ describe('MultiplexStream', function() {
       upstreamMultiplex.end();
     });
   });
+
+  it.skip('should error if an existing id is used to make a connection', function(done) {
+    done();
+  });
+
+  it.skip('should timeout if no multiplex responds to the connect request', function(done) {
+    done();
+  });
+
+  it.skip('should end tunnel streams cleanly when the multiplex stream ends', function(done) {
+    done();
+  });
 });
