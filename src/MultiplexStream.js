@@ -9,23 +9,9 @@ var END_EVENT = 0,
     CONNECT_EVENT = 3;
 
 // force all events to be asynchronous
-var events = [];
-function emitEvent(emitter, event, data) {
-  if (events.length === 0) {
-    process.nextTick(function() {
-      var currentEvents = events;
-      events = [];
-      currentEvents.forEach(function(event) {
-        if (event.event === 'data') {
-        }
-        event.emitter.emit(event.event, event.data);
-      });
-    });
-  }
-  events.push({
-    emitter: emitter,
-    event: event,
-    data: data
+function emitEvent(emitter, event, data) {    
+  process.nextTick(function() {
+    emitter.emit(event, data);
   });
 }
 
