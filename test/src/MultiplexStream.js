@@ -150,14 +150,14 @@ describe('MultiplexStream', function() {
     });
     upstreamMultiplex.pipe(downstreamMultiplex).pipe(upstreamMultiplex);
 
-    var upstreamConnection = upstreamMultiplex.connect('anAwesomeID');
+    var upstreamConnection = upstreamMultiplex.connect({id: 'anAwesomeID'});
   });
 
   it('should error if the upstream multiplex already has a connection with the requested name', function(done) {
     var upstreamMultiplex = new MultiplexStream();
     var downstreamMultiplex = new MultiplexStream(function(downstreamConnection) {
       expect(downstreamConnection.id).to.equal('anAwesomeID');
-      upstreamMultiplex.connect('anAwesomeID', function() {
+      upstreamMultiplex.connect({id: 'anAwesomeID'}, function() {
         expect().fail('Should not have received connect event');
       }).on('error', function(error) {
         expect(error.message).to.equal('Connection already exists');
@@ -166,7 +166,7 @@ describe('MultiplexStream', function() {
     });
     upstreamMultiplex.pipe(downstreamMultiplex).pipe(upstreamMultiplex);
 
-    var upstreamConnection = upstreamMultiplex.connect('anAwesomeID');
+    var upstreamConnection = upstreamMultiplex.connect({id: 'anAwesomeID'});
   });
 
   it('should timeout if no multiplex responds to connect requests', function(done) {
@@ -187,7 +187,7 @@ describe('MultiplexStream', function() {
         connectTimeout: 500
       });
       anotherUpstreamMultiplex.pipe(downstreamMultiplex).pipe(anotherUpstreamMultiplex);
-      anotherUpstreamMultiplex.connect('anAwesomeID', function() {
+      anotherUpstreamMultiplex.connect({id: 'anAwesomeID'}, function() {
         expect().fail('Should not have received connect event');
       }).on('error', function(error) {
         expect(error.message).to.equal('Connect request timed out');
@@ -196,7 +196,7 @@ describe('MultiplexStream', function() {
     });
     upstreamMultiplex.pipe(downstreamMultiplex).pipe(upstreamMultiplex);
 
-    var upstreamConnection = upstreamMultiplex.connect('anAwesomeID');
+    var upstreamConnection = upstreamMultiplex.connect({id: 'anAwesomeID'});
   });
 
   it('should end tunnel streams cleanly when the multiplex stream ends', function(done) {

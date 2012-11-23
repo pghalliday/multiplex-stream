@@ -25,10 +25,10 @@ npm install stream-multiplex
 ```javascript
 var MultiplexStream = require('multiplex-stream');
 
-// create 2 multiplex instances and listen for connections downstream
-var upstreamMultiplex = new MultiplexStream();
+// create downstream multiplex that listens for connections
 var downstreamMultiplex = new MultiplexStream(function(downstreamConnection) {
-  // a multiplexed stream has connected from upstream
+  // a multiplexed stream has connected from upstream.
+  // The assigned id will be accessible as downstreamConnection.id
   downstreamConnection.setEncoding();
   downstreamConnection.on('data', function(data) {
     // received data, send reply upstream
@@ -39,12 +39,24 @@ var downstreamMultiplex = new MultiplexStream(function(downstreamConnection) {
   });
 });
 
+// create upstream multiplex that will be used to initiate connections
+var upstreamMultiplex = new MultiplexStream({
+  // The connectTimeout optionally specifies how long to
+  // wait in milliseconds for the downstream multiplex to
+  // accept to connections. It defaults to 3000 milliseconds
+  connectTimeout: 5000
+});
+
 // pipe from one multiplex to the other (there could
 // be other carrier streams in between, for instance a net socket)
 upstreamMultiplex.pipe(downstreamMultiplex).pipe(upstreamMultiplex);
 
 // create a new upstream multiplexed stream
-var upstreamConnection = upstreamMultiplex.connect(function() {
+var upstreamConnection = upstreamMultiplex.connect({
+  // optionally specify an id for the stream. By default
+  // a v1 UUID will be assigned as the id for anonymous streams
+  id: 'MyStream'
+}, function() {
   upstreamConnection.setEncoding();
   upstreamConnection.on('data', function(data) {
     // received reply, end the connection

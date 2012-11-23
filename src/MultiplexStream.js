@@ -158,7 +158,7 @@ function Tunnel(id, streamMultiplexStream) {
 }
 util.inherits(Tunnel, Stream);
 
-function MultiplexStream(options, callback) {
+function MultiplexStream(multiplexOptions, callback) {
   var self = this,
       decoder = new Decoder(),
       tunnels = {};
@@ -166,12 +166,12 @@ function MultiplexStream(options, callback) {
   self.readable = true;
   self.writable = true;
 
-  if (typeof options === 'function') {
-    callback = options;
-    options = null;
+  if (typeof multiplexOptions === 'function') {
+    callback = multiplexOptions;
+    multiplexOptions = null;
   }
 
-  options = options || {};
+  multiplexOptions = multiplexOptions || {};
 
   if (callback) {
     self.on('connection', callback);
@@ -219,12 +219,13 @@ function MultiplexStream(options, callback) {
     }
   });
 
-  self.connect = function(id, connectListener){
-    if (typeof id === 'function') {
-      connectListener = id;
-      id = null;      
+  self.connect = function(connectOptions, connectListener){
+    if (typeof connectOptions === 'function') {
+      connectListener = connectOptions;
+      connectOptions = null;      
     }
-    id = id || uuid.v1();
+    connectOptions = connectOptions || {};
+    var id = connectOptions.id || uuid.v1();
 
     var tunnel = new Tunnel(id, self);
     if (connectListener) {
@@ -237,7 +238,7 @@ function MultiplexStream(options, callback) {
       tunnel.connectTimeout = setTimeout(function() {
         delete tunnels[id];
         emitEvent(tunnel, 'error', new Error('Connect request timed out'));      
-      }, options.connectTimeout || DEFAULT_CONNECT_TIMEOUT);
+      }, multiplexOptions.connectTimeout || DEFAULT_CONNECT_TIMEOUT);
       registerTunnel(tunnel);
       emitEvent(self, 'data', encodeEvent({
         tunnelId: id,
