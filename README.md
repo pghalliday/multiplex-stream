@@ -68,7 +68,7 @@ var upstreamConnection = upstreamMultiplex.connect({
   // send some data downstream
   upstreamConnection.write('Hello, downstream');
 }).on('error', function(error) {
-  // timeouts and other errors resulting from connect requests
+  // timeouts and other errors resulting from the connect request
 });
 ```
 
