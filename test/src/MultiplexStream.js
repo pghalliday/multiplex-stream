@@ -250,4 +250,13 @@ describe('MultiplexStream', function() {
       upstreamConnection.write('Hello, downstream');
     });
   });
+  it('should notify new listeners of existing connections when they connect', function(done) {
+    var upstreamMultiplex = new MultiplexStream();
+    var upstreamConnection = upstreamMultiplex.createStream();
+    var downstreamMultiplex = new MultiplexStream(function(downstreamConnection) {
+      done();
+    });
+    upstreamMultiplex.pipe(downstreamMultiplex);
+    upstreamMultiplex.end();
+  });
 });

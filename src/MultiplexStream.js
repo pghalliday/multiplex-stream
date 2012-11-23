@@ -249,6 +249,17 @@ function MultiplexStream(multiplexOptions, callback) {
     return tunnel;
   };
 
+  self.on('newListener', function(event, cb) {
+    if (event === "data") {
+      for (var id in tunnels) {
+        cb(encodeEvent({
+          tunnelId: id,
+          type: CONNECTION_EVENT
+        }));
+      }
+    }
+  });
+
   self.delete = function(id) {
     delete tunnels[id];
   };
