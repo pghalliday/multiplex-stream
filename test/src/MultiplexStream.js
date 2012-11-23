@@ -153,7 +153,7 @@ describe('MultiplexStream', function() {
     var upstreamConnection = upstreamMultiplex.connect('anAwesomeID');
   });
 
-  it('should error if the upstream multiplex already has a connection with the requested id', function(done) {
+  it('should error if the upstream multiplex already has a connection with the requested name', function(done) {
     var upstreamMultiplex = new MultiplexStream();
     var downstreamMultiplex = new MultiplexStream(function(downstreamConnection) {
       expect(downstreamConnection.id).to.equal('anAwesomeID');
@@ -169,7 +169,7 @@ describe('MultiplexStream', function() {
     var upstreamConnection = upstreamMultiplex.connect('anAwesomeID');
   });
 
-  it('should timeout if no multiplex responds to the connect request', function(done) {
+  it('should timeout if no multiplex responds to connect requests', function(done) {
     var upstreamMultiplex = new MultiplexStream({
       connectTimeout: 500
     });
@@ -179,7 +179,7 @@ describe('MultiplexStream', function() {
     });
   });
 
-  it('should timeout connection requests if the downstream multiplex already has a connection with the requested id as multicasting to more than one multiplex is not a supported use case', function(done) {
+  it('should timeout connect requests if the downstream multiplex already has a connection with the requested name as multicasting to more than one multiplex is not a supported use case', function(done) {
     var upstreamMultiplex = new MultiplexStream();
     var downstreamMultiplex = new MultiplexStream(function(downstreamConnection) {
       expect(downstreamConnection.id).to.equal('anAwesomeID');

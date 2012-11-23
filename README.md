@@ -9,6 +9,10 @@ Multiplex multiple streams through a single stream
 - should behave correctly with intermediate flow control where data events may get split and/or concatenated
 - should allow the downstream connection to write data first
 - should allow a stream to be named
+- should error if the upstream multiplex already has a connection with the requested name
+- should timeout if no multiplex responds to connect requests
+- should timeout connect requests if the downstream multiplex already has a connection with the requested name as multicasting to more than one multiplex is not a supported use case
+- should end tunnel streams cleanly when the multiplex stream ends
 
 ## Installation
 
@@ -51,14 +55,14 @@ var upstreamConnection = upstreamMultiplex.connect(function() {
   });
   // send some data downstream
   upstreamConnection.write('Hello, downstream');
+}).on('error', function(error) {
+  // timeouts and other errors resulting from connect requests
 });
 ```
 
 ## Roadmap
 
-- should error if an existing id is used to make a connection
-- should timeout if no multiplex responds to the connect request
-- should end tunnel streams cleanly when the multiplex stream ends
+- Nothing at this time
 
 ## Contributing
 In lieu of a formal styleguide, take care to maintain the existing coding style. Add unit tests for any new or changed functionality. Lint and test your code using ``./grunt.sh`` or ``.\grunt.bat``.
