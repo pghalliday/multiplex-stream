@@ -43,7 +43,7 @@ var downstreamMultiplex = new MultiplexStream(function(downstreamConnection) {
 var upstreamMultiplex = new MultiplexStream({
   // The connectTimeout optionally specifies how long to
   // wait in milliseconds for the downstream multiplex to
-  // accept to connections. It defaults to 3000 milliseconds
+  // accept connections. It defaults to 3000 milliseconds
   connectTimeout: 5000
 });
 
