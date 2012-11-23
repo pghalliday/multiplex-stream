@@ -6,8 +6,9 @@ var util = require('util'),
 var END_EVENT = 0,
     DATA_EVENT = 1,
     CONNECTION_EVENT = 2,
-    CONNECT_EVENT = 3,
-    ERROR_EVENT = 4;
+    CONNECT_EVENT = 3;
+
+var DEFAULT_CONNECT_TIMEOUT = 3000;
 
 // force all events to be asynchronous
 function emitEvent(emitter, event, data) {    
@@ -31,7 +32,6 @@ function encodeEvent(event) {
   }
   return encodedBuffer;
 }
-
 
 function Decoder() {
   var READING_ID_LENGTH = 0,
@@ -158,7 +158,7 @@ function Tunnel(id, streamMultiplexStream) {
 }
 util.inherits(Tunnel, Stream);
 
-function MultiplexStream(callback) {
+function MultiplexStream(options, callback) {
   var self = this,
       decoder = new Decoder(),
       tunnels = {};
@@ -166,14 +166,21 @@ function MultiplexStream(callback) {
   self.readable = true;
   self.writable = true;
 
+  if (typeof options === 'function') {
+    callback = options;
+    options = null;
+  }
+
+  options = options || {};
+
   if (callback) {
     self.on('connection', callback);
   }
 
-  function registerTunnel(id, tunnel) {
-    tunnels[id] = tunnel;
+  function registerTunnel(tunnel) {
+    tunnels[tunnel.id] = tunnel;
     tunnel.on('end', function() {
-      delete tunnels[id];
+      delete tunnels[tunnel.id];
     });
   }
 
@@ -192,14 +199,10 @@ function MultiplexStream(callback) {
         emitEvent(tunnel, 'data', event.buffer);
       }
     } else if (event.type === CONNECTION_EVENT) {
-      if (tunnels[event.tunnelId]) {
-        emitEvent(self, 'data', encodeEvent({
-          tunnelId: tunnel.id,
-          type: ERROR_EVENT
-        }));
-      } else {
+      // ignore connection events if the tunnel already exists - this is not supported!
+      if (!tunnel) {
         tunnel = new Tunnel(event.tunnelId, self);
-        registerTunnel(event.tunnelId, tunnel);
+        registerTunnel(tunnel);
 
         emitEvent(self, 'data', encodeEvent({
           tunnelId: tunnel.id,
@@ -210,12 +213,8 @@ function MultiplexStream(callback) {
       }
     } else if (event.type === CONNECT_EVENT) {
       if (tunnel) {
+        clearTimeout(tunnel.connectTimeout);
         emitEvent(tunnel, 'connect');
-      }
-    } else if (event.type === ERROR_EVENT) {
-      if (tunnel) {
-        delete tunnels[tunnel.id];
-        emitEvent(tunnel, 'error', new Error('Connection already exists at the other end: ' + tunnel.id));
       }
     }
   });
@@ -228,12 +227,18 @@ function MultiplexStream(callback) {
     id = id || uuid.v1();
 
     var tunnel = new Tunnel(id, self);
-    tunnel.on('connect', connectListener);
+    if (connectListener) {
+      tunnel.on('connect', connectListener);
+    }
 
     if (tunnels[id]) {
-      emitEvent(tunnel, 'error', new Error('Connection already exists at this end: ' + id));      
+      emitEvent(tunnel, 'error', new Error('Connection already exists'));      
     } else {
-      registerTunnel(id, tunnel);
+      tunnel.connectTimeout = setTimeout(function() {
+        delete tunnels[id];
+        emitEvent(tunnel, 'error', new Error('Connect request timed out'));      
+      }, options.connectTimeout || DEFAULT_CONNECT_TIMEOUT);
+      registerTunnel(tunnel);
       emitEvent(self, 'data', encodeEvent({
         tunnelId: id,
         type: CONNECTION_EVENT
@@ -252,11 +257,15 @@ function MultiplexStream(callback) {
   };
   
   self.end = function() {
-    Object.keys(tunnels).forEach(function(id) {
-      emitEvent(tunnels[id], 'end');
-      delete tunnels[id];
+    // defer this to the next tick to ensure
+    // that all events happen in the right order
+    process.nextTick(function() {
+      Object.keys(tunnels).forEach(function(id) {
+        emitEvent(tunnels[id], 'end');
+        delete tunnels[id];
+      });
+      emitEvent(self, 'end');
     });
-    emitEvent(self, 'end');
   };
 }
 util.inherits(MultiplexStream, Stream);

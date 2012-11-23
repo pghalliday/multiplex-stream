@@ -150,9 +150,7 @@ describe('MultiplexStream', function() {
     });
     upstreamMultiplex.pipe(downstreamMultiplex).pipe(upstreamMultiplex);
 
-    var upstreamConnection = upstreamMultiplex.connect('anAwesomeID', function() {
-      upstreamMultiplex.end();
-    });
+    var upstreamConnection = upstreamMultiplex.connect('anAwesomeID');
   });
 
   it('should error if the upstream multiplex already has a connection with the requested id', function(done) {
@@ -162,42 +160,94 @@ describe('MultiplexStream', function() {
       upstreamMultiplex.connect('anAwesomeID', function() {
         expect().fail('Should not have received connect event');
       }).on('error', function(error) {
-        expect(error.message).to.equal('Connection already exists at this end: anAwesomeID');
+        expect(error.message).to.equal('Connection already exists');
         done();
       });
     });
     upstreamMultiplex.pipe(downstreamMultiplex).pipe(upstreamMultiplex);
 
-    var upstreamConnection = upstreamMultiplex.connect('anAwesomeID', function() {
-      upstreamMultiplex.end();
+    var upstreamConnection = upstreamMultiplex.connect('anAwesomeID');
+  });
+
+  it('should timeout if no multiplex responds to the connect request', function(done) {
+    var upstreamMultiplex = new MultiplexStream({
+      connectTimeout: 500
+    });
+    var upstreamConnection = upstreamMultiplex.connect().on('error', function(error) {
+      expect(error.message).to.equal('Connect request timed out');
+      done();
     });
   });
 
-  it('should error if the downstream multiplex already has a connection with the requested id', function(done) {
+  it('should timeout connection requests if the downstream multiplex already has a connection with the requested id as multicasting to more than one multiplex is not a supported use case', function(done) {
     var upstreamMultiplex = new MultiplexStream();
     var downstreamMultiplex = new MultiplexStream(function(downstreamConnection) {
       expect(downstreamConnection.id).to.equal('anAwesomeID');
-      var anotherUpstreamMultiplex = new MultiplexStream();
+      var anotherUpstreamMultiplex = new MultiplexStream({
+        connectTimeout: 500
+      });
       anotherUpstreamMultiplex.pipe(downstreamMultiplex).pipe(anotherUpstreamMultiplex);
       anotherUpstreamMultiplex.connect('anAwesomeID', function() {
         expect().fail('Should not have received connect event');
       }).on('error', function(error) {
-        expect(error.message).to.equal('Connection already exists at the other end: anAwesomeID');
+        expect(error.message).to.equal('Connect request timed out');
         done();
       });
     });
     upstreamMultiplex.pipe(downstreamMultiplex).pipe(upstreamMultiplex);
 
-    var upstreamConnection = upstreamMultiplex.connect('anAwesomeID', function() {
-      upstreamMultiplex.end();
+    var upstreamConnection = upstreamMultiplex.connect('anAwesomeID');
+  });
+
+  it('should end tunnel streams cleanly when the multiplex stream ends', function(done) {
+    var checklist = new Checklist([
+      'Hello, downstream',
+      'Hello, upstream',
+      'upstreamConnection end',
+      'upstreamMultiplex end',
+      'that\'s all',
+      'downstreamConnection end',
+      'downstreamMultiplex end'
+    ], {
+      ordered: true
+    }, done);
+
+    var upstreamMultiplex = new MultiplexStream().on('end', function() {
+      checklist.check('upstreamMultiplex end');
     });
-  });
 
-  it.skip('should timeout if no multiplex responds to the connect request', function(done) {
-    done();
-  });
+    var downstreamMultiplex = new MultiplexStream(function(downstreamConnection) {
+      downstreamConnection.setEncoding();
+      downstreamConnection.on('data', function(data) {
+        checklist.check(data);
+        if (data === 'Hello, downstream') {
+          downstreamConnection.write('Hello, upstream');
+        }
+      });
+      downstreamConnection.on('end', function(data) {
+        checklist.check('downstreamConnection end');
+      });
+    }).on('end', function() {
+      checklist.check('downstreamMultiplex end');
+    });
 
-  it.skip('should end tunnel streams cleanly when the multiplex stream ends', function(done) {
-    done();
+    upstreamMultiplex.pipe(downstreamMultiplex).pipe(upstreamMultiplex);
+
+    var upstreamConnection = upstreamMultiplex.connect(function() {
+      upstreamConnection.setEncoding();
+      upstreamConnection.on('data', function(data) {
+        checklist.check(data);
+        // this might be the important write
+        // it should not be lost by ending the
+        // multiplex stream and it should arrive
+        // before the downstream connection ends
+        upstreamConnection.write('that\'s all');
+        upstreamMultiplex.end();
+      });
+      upstreamConnection.on('end', function() {
+        checklist.check('upstreamConnection end');
+      });
+      upstreamConnection.write('Hello, downstream');
+    });
   });
 });
